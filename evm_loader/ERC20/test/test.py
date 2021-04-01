@@ -275,7 +275,7 @@ class EvmLoaderTests(unittest.TestCase):
         result = http_client.send_transaction(trx, self.acc)
         result = confirm_transaction(http_client, result["result"])
         messages = result["result"]["meta"]["logMessages"]
-        res = messages[messages.index("Program log: succeed") + 1]
+        res = messages[messages.index("Program log: Succeed") + 2]
         if not res.startswith("Program log: "):
             raise Exception("Invalid program logs: no result")
         else:
@@ -324,7 +324,7 @@ class EvmLoaderTests(unittest.TestCase):
         result = http_client.send_transaction(trx, self.acc)
         result = confirm_transaction(http_client, result["result"])
         messages = result["result"]["meta"]["logMessages"]
-        res = messages[messages.index("Program log: succeed") + 1]
+        res = messages[messages.index("Program log: Succeed") + 2]
         if not res.startswith("Program log: "):
             raise Exception("Invalid program logs: no result")
         else:
@@ -352,7 +352,7 @@ class EvmLoaderTests(unittest.TestCase):
         result = http_client.send_transaction(trx, self.acc)
         result = confirm_transaction(http_client, result["result"])
         messages = result["result"]["meta"]["logMessages"]
-        res = messages[messages.index("Program log: succeed") + 1]
+        res = messages[messages.index("Program log: Succeed") + 2]
         if not res.startswith("Program log: "):
             raise Exception("Invalid program logs: no result")
         else:
@@ -394,7 +394,7 @@ class EvmLoaderTests(unittest.TestCase):
         result = confirm_transaction(http_client, result["result"])
         messages = result["result"]["meta"]["logMessages"]
         print("erc20 transfer signature: {}".format(result["result"]["transaction"]["signatures"][0]))
-        res = messages[messages.index("Program log: succeed") + 1]
+        res = messages[messages.index("Program log: Succeed") + 2]
         if not res.startswith("Program log: "):
             raise Exception("Invalid program logs: no result")
         else:
@@ -418,7 +418,7 @@ class EvmLoaderTests(unittest.TestCase):
         result = http_client.send_transaction(trx, self.acc)
         result = confirm_transaction(http_client, result["result"])
         messages = result["result"]["meta"]["logMessages"]
-        res = messages[messages.index("Program log: succeed") + 1]
+        res = messages[messages.index("Program log: Succeed") + 2]
         if not res.startswith("Program log: "):
             raise Exception("Invalid program logs: no result")
         else:
@@ -440,7 +440,7 @@ class EvmLoaderTests(unittest.TestCase):
         result = http_client.send_transaction(trx, self.acc)
         result = confirm_transaction(http_client, result["result"])
         messages = result["result"]["meta"]["logMessages"]
-        res = messages[messages.index("Program log: succeed") + 1]
+        res = messages[messages.index("Program log: Succeed") + 2]
         if not res.startswith("Program log: "):
             raise Exception("Invalid program logs: no result")
         else:
