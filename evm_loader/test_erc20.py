@@ -1,21 +1,8 @@
-from solana.rpc.api import Client
-from solana.account import Account
-from solana.transaction import AccountMeta, TransactionInstruction, Transaction
-from solana.sysvar import *
-import unittest
-import time
-import os
-import json
 import base58
-import subprocess
 import unittest
 from eth_tx_utils import  make_keccak_instruction_data, Trx
-import base64
-from construct import Struct as cStruct
-from construct import Bytes, Int8ul, Int32ul
-from typing import NamedTuple
-from eth_keys import keys as eth_keys
 from web3.auto import w3
+from solana_utils import *
 
 tokenkeg = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
 sysvarclock = "SysvarC1ock11111111111111111111111111111111"
@@ -23,70 +10,11 @@ sysinstruct = "Sysvar1nstructions1111111111111111111111111"
 keccakprog = "KeccakSecp256k11111111111111111111111111111"
 solana_url = os.environ.get("SOLANA_URL", "http://localhost:8899")
 http_client = Client(solana_url)
-evm_loader = os.environ.get("EVM_LOADER")
-path_to_evm_loader = '../../../target/bpfel-unknown-unknown/release/evm_loader.so'
-
-def confirm_transaction(client, tx_sig):
-    """Confirm a transaction."""
-    TIMEOUT = 30  # 30 seconds  pylint: disable=invalid-name
-    elapsed_time = 0
-    while elapsed_time < TIMEOUT:
-        sleep_time = 3
-        if not elapsed_time:
-            sleep_time = 7
-            time.sleep(sleep_time)
-        else:
-            time.sleep(sleep_time)
-        resp = client.get_confirmed_transaction(tx_sig)
-        if resp["result"]:
-#            print('Confirmed transaction:', resp)
-            break
-        elapsed_time += sleep_time
-    if not resp["result"]:
-        raise RuntimeError("could not confirm transaction: ", tx_sig)
-    return resp
-
-
-ACCOUNT_INFO_LAYOUT = cStruct(
-    "eth_acc" / Bytes(20),
-    "nonce" / Int8ul,
-    "trx_count" / Bytes(8),
-    "signer_acc" / Bytes(32),
-    "code_size" / Int32ul
-)
-
-class AccountInfo(NamedTuple):
-    eth_acc: eth_keys.PublicKey
-    trx_count: int
-
-    @staticmethod
-    def frombytes(data):
-        cont = ACCOUNT_INFO_LAYOUT.parse(data)
-        return AccountInfo(cont.eth_acc, cont.trx_count)
-
-def _getAccountData(client, account, expected_length, owner=None):
-    info = client.get_account_info(account)['result']['value']
-    if info is None:
-        raise Exception("Can't get information about {}".format(account))
-
-    data = base64.b64decode(info['data'][0])
-    if len(data) != expected_length:
-        raise Exception("Wrong data length for account data {}".format(account))
-    return data
-
-
-class SolanaCli:
-    def __init__(self, url):
-        self.url = url
-
-    def call(self, arguments):
-        cmd = 'solana --url {} {}'.format(self.url, arguments)
-        try:
-            return subprocess.check_output(cmd, shell=True, universal_newlines=True)
-        except subprocess.CalledProcessError as err:
-            import sys
-            print("ERR: solana error {}".format(err))
-            raise
+evm_loader_id = os.environ.get("EVM_LOADER")
+# evm_loader_id = "6Eo6NybJ45RM62XWzb4eCtdCGCnEELuZm1rSxRM15ocz"
+CONTRACTS_DIR = os.environ.get("CONTRACTS_DIR", "evm_loader/")
+CONTRACT_ERC20_BIN = CONTRACTS_DIR + "ERC20.binary"
+ERC20_CTOR = CONTRACTS_DIR + "ERC20/erc20_ctor_uninit.hex"
 
 class SplToken:
     def __init__(self, url):
@@ -101,86 +29,29 @@ class SplToken:
             print("ERR: spl-token error {}".format(err))
             raise
 
-class EvmLoader:
-    loader_id = evm_loader
+def deployERC20(loader, location_hex, location_bin,  mintId, balance_erc20):
+    ctor_init = str("%064x" % 0xa0) + \
+                str("%064x" % 0xe0) + \
+                str("%064x" % 0x9) + \
+                base58.b58decode(balance_erc20).hex() + \
+                base58.b58decode(mintId).hex() + \
+                str("%064x" % 0x1) + \
+                str("77%062x" % 0x00) + \
+                str("%064x" % 0x1) + \
+                str("77%062x" % 0x00)
 
-    def __init__(self, solana_url, loader_id=None):
-        if not loader_id and not EvmLoader.loader_id:
-            print("Load EVM loader...")
-            cli = SolanaCli(solana_url)
-            contract = path_to_evm_loader
-            result = json.loads(cli.call('deploy {}'.format(contract)))
-            programId = result['programId']
-            EvmLoader.loader_id = programId
-            print("Done\n")
+    with open(location_hex, mode='r') as hex:
+        binary = bytearray.fromhex(hex.read() + ctor_init)
+        with open(location_bin, mode='wb') as bin:
+            bin.write(binary)
+            return loader.deploy(location_bin)
 
-        self.solana_url = solana_url
-        self.loader_id = loader_id or EvmLoader.loader_id
-        print("Evm loader program: {}".format(self.loader_id))
-
-    def deploy(self, contract):
-        cli = SolanaCli(self.solana_url)
-        output = cli.call("deploy --use-evm-loader {} {}".format(self.loader_id, contract))
-        print(type(output), output)
-        return json.loads(output.splitlines()[-1])
-
-    def createEtherAccount(self, ether):
-        cli = SolanaCli(self.solana_url)
-        output = cli.call("create-ether-account {} {} 1".format(self.loader_id, ether.hex()))
-        result = json.loads(output.splitlines()[-1])
-        return result["solana"]
-
-    def ether2program(self, ether):
-        cli = SolanaCli(self.solana_url)
-        output = cli.call("create-program-address {} {}".format(ether.hex(), self.loader_id))
-        items = output.rstrip().split('  ')
-        return (items[0], int(items[1]))
-
-    def deployERC20(self, location_hex, location_bin,  mintId, balance_erc20):
-        ctor_init = str("%064x" % 0xa0) + \
-                    str("%064x" % 0xe0) + \
-                    str("%064x" % 0x9) + \
-                    base58.b58decode(balance_erc20).hex() + \
-                    base58.b58decode(mintId).hex() + \
-                    str("%064x" % 0x1) + \
-                    str("77%062x" % 0x00) + \
-                    str("%064x" % 0x1) + \
-                    str("77%062x" % 0x00)
-
-        with open(location_hex, mode='r') as hex:
-            binary = bytearray.fromhex(hex.read() + ctor_init)
-            with open(location_bin, mode='wb') as bin:
-                bin.write(binary)
-                return self.deploy(location_bin)
-
-def solana2ether(public_key):
-    from web3 import Web3
-    return bytes(Web3.keccak(bytes(PublicKey(public_key)))[-20:])
-
-
-def getBalance(account):
-    return http_client.get_balance(account)['result']['value']
-
-
-class EvmLoaderTests(unittest.TestCase):
+class erc20_tests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.loader = EvmLoader(solana_url, evm_loader)
-
-        # Initialize user account
-        cli = SolanaCli(solana_url)
-        res = cli.call("config get")
-        res = res.splitlines()[-1]
-        substr = "Keypair Path: "
-        if not res.startswith(substr):
-            raise Exception("cannot get keypair path")
-        path = res[len(substr):]
-        with open(path.strip(), mode='r') as file:
-            pk = (file.read())
-            nums = list(map(int, pk.strip("[]").split(',')))
-            nums = nums[0:32]
-            values = bytes(nums)
-            cls.acc = Account(values)
+        wallet = WalletAccount(wallet_path())
+        cls.loader = EvmLoader(solana_url, wallet, evm_loader_id)
+        cls.acc = wallet.get_acc()
 
         cls.caller_eth_pr_key = w3.eth.account.from_key(cls.acc.secret_key())
         cls.caller_eth = bytes.fromhex(cls.caller_eth_pr_key.address[2:])
@@ -242,7 +113,7 @@ class EvmLoaderTests(unittest.TestCase):
                 self.acc.public_key()._key.hex() + \
                 "%064x" % amount
 
-        info = _getAccountData(http_client, self.caller, ACCOUNT_INFO_LAYOUT.sizeof())
+        info = getAccountData(http_client, self.caller, ACCOUNT_INFO_LAYOUT.sizeof())
         caller_trx_cnt = int.from_bytes(AccountInfo.frombytes(info).trx_count, 'little')
 
         trx_raw = { 'to': solana2ether(erc20), 'value': 0, 'gas': 0, 'gasPrice': 0, 'nonce': caller_trx_cnt,
@@ -291,7 +162,7 @@ class EvmLoaderTests(unittest.TestCase):
             base58.b58decode(receiver).hex() +
             "%064x" % amount
         )
-        info = _getAccountData(http_client, self.caller, ACCOUNT_INFO_LAYOUT.sizeof())
+        info = getAccountData(http_client, self.caller, ACCOUNT_INFO_LAYOUT.sizeof())
         caller_trx_cnt = int.from_bytes(AccountInfo.frombytes(info).trx_count, 'little')
 
         trx_raw = { 'to': solana2ether(erc20), 'value': 0, 'gas': 0, 'gasPrice': 0, 'nonce': caller_trx_cnt,
@@ -366,7 +237,7 @@ class EvmLoaderTests(unittest.TestCase):
             "%064x" % amount
         )
 
-        info = _getAccountData(http_client, self.caller, ACCOUNT_INFO_LAYOUT.sizeof())
+        info = getAccountData(http_client, self.caller, ACCOUNT_INFO_LAYOUT.sizeof())
         caller_trx_cnt = int.from_bytes(AccountInfo.frombytes(info).trx_count, 'little')
 
         trx_raw = {'to': solana2ether(erc20), 'value': 0, 'gas': 0, 'gasPrice': 0, 'nonce': caller_trx_cnt,
@@ -455,7 +326,7 @@ class EvmLoaderTests(unittest.TestCase):
         balance_erc20 = self.createTokenAccount(mintId)
         print ("create account balance_erc20:", balance_erc20)
 
-        deploy_result= self.loader.deployERC20("erc20_ctor_uninit.hex", "erc20.bin",  mintId, balance_erc20)
+        deploy_result = deployERC20(self.loader, ERC20_CTOR, CONTRACT_ERC20_BIN,  mintId, balance_erc20)
         erc20Id = deploy_result["programId"]
         erc20Id_ether = bytearray.fromhex(deploy_result["ethereum"][2:])
 
