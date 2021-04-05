@@ -52,8 +52,7 @@ RUN ls -l target target/bpfel-unknown-unknown target/bpfel-unknown-unknown/relea
 
 
 # Build Solidity contracts
-FROM ethereum/solc:0.5.12 AS solc
-FROM ethereum/solc:0.7.6 AS solc_076
+FROM ethereum/solc:0.7.6 AS solc
 FROM ubuntu:20.04 AS contracts
 RUN apt-get update && \
     DEBIAN_FRONTEND=nontineractive apt-get -y install xxd && \
@@ -63,12 +62,11 @@ COPY evm_loader/ERC20 /opt/ERC20
 RUN ls -l /opt
 RUN ls -l /opt/ERC20
 COPY --from=solc /usr/bin/solc /usr/bin/solc
-COPY --from=solc_076 /usr/bin/solc /usr/bin/solc_076
 WORKDIR /opt/
 RUN solc --output-dir . --bin *.sol && \
     for file in $(ls *.bin); do xxd -r -p $file >${file}ary; done && \
         ls -l
-RUN /usr/bin/solc_076 --output-dir . --bin ERC20/ERC20.sol && xxd -r -p ERC20.bin > ERC20.binary && ls -l
+RUN /usr/bin/solc --output-dir . --bin ERC20/ERC20.sol && xxd -r -p ERC20.bin > ERC20.binary && ls -l
 
 
 # Define solana-image that contains utility
