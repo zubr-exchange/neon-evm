@@ -1,10 +1,9 @@
 import base58
 import unittest
 from eth_tx_utils import make_keccak_instruction_data, Trx, make_instruction_data_from_tx
-from web3.auto import w3
 from solana_utils import *
 from re import search
-import time
+from eth_utils import abi
 
 tokenkeg = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
 sysvarclock = "SysvarC1ock11111111111111111111111111111111"
@@ -12,6 +11,8 @@ sysinstruct = "Sysvar1nstructions1111111111111111111111111"
 keccakprog = "KeccakSecp256k11111111111111111111111111111"
 solana_url = os.environ.get("SOLANA_URL", "http://localhost:8899")
 evm_loader_id = os.environ.get("EVM_LOADER")
+evm_loader_id = "JBBiWxMLXZ98tNRWu53vxnYyrNt4bYsoJpR7B5wJpS7p"
+
 
 
 class SplToken:
@@ -28,69 +29,48 @@ class SplToken:
             raise
 
 
-class EvmLoaderERC20(EvmLoader):
-    def deploy_erc20(self, location_hex, location_bin, mintId, balance_erc20, caller, caller_ether):
-        ctor_init = str("%064x" % 0xa0) + \
-                    str("%064x" % 0xe0) + \
-                    str("%064x" % 0x9) + \
-                    base58.b58decode(balance_erc20).hex() + \
-                    base58.b58decode(mintId).hex() + \
-                    str("%064x" % 0x1) + \
-                    str("77%062x" % 0x00) + \
-                    str("%064x" % 0x1) + \
-                    str("77%062x" % 0x00)
+def deploy_erc20(loader, location_hex, location_bin, mintId, balance_erc20, caller):
+    ctor_init = str("%064x" % 0xa0) + \
+                str("%064x" % 0xe0) + \
+                str("%064x" % 0x9) + \
+                base58.b58decode(balance_erc20).hex() + \
+                base58.b58decode(mintId).hex() + \
+                str("%064x" % 0x1) + \
+                str("77%062x" % 0x00) + \
+                str("%064x" % 0x1) + \
+                str("77%062x" % 0x00)
 
-        with open(location_hex, mode='r') as hex:
-            binary = bytearray.fromhex(hex.read() + ctor_init)
-            with open(location_bin, mode='wb') as bin:
-                bin.write(binary)
-                return self.deployChecked(location_bin, caller, caller_ether)
-
-
-def solana2ether(public_key):
-    from web3 import Web3
-    return bytes(Web3.keccak(bytes(PublicKey(public_key)))[-20:])
+    with open(location_hex, mode='r') as hex:
+        binary = bytearray.fromhex(hex.read() + ctor_init)
+        with open(location_bin, mode='wb') as bin:
+            bin.write(binary)
+            res =  loader.deploy(location_bin, caller)
+            return (res['programId'], bytes.fromhex(res['ethereum'][2:]), res['codeId'])
 
 
-def getBalance(account):
-    return client.get_balance(account)['result']['value']
-
-
-class EvmLoaderTests(unittest.TestCase):
+class ERC20test(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.wallet = RandomAccount(wallet_path())
-        cls.acc = cls.wallet.get_acc()
-        cls.loader = EvmLoaderERC20(cls.wallet, evm_loader_id)
+        wallet = WalletAccount(wallet_path())
+        cls.loader = EvmLoader(wallet, evm_loader_id)
+        cls.acc = wallet.get_acc()
+
         # Create ethereum account for user account
-        cls.caller_eth_pr_key = w3.eth.account.from_key(cls.acc.secret_key())
         cls.caller_ether = eth_keys.PrivateKey(cls.acc.secret_key()).public_key.to_canonical_address()
-
-        print('cls.caller_ether:', cls.caller_ether.hex())
         (cls.caller, cls.caller_nonce) = cls.loader.ether2program(cls.caller_ether)
-        print('cls.caller:', cls.caller)
 
-        while getBalance(cls.acc.public_key()) == 0:
-            tx = client.request_airdrop(cls.acc.public_key(), 10 * 10 ** 9)
-            confirm_transaction(client, tx['result'])
-            time.sleep(1)
-            balance = client.get_balance(cls.acc.public_key())['result']['value']
-            print('balance:', balance)
-
-        info = client.get_account_info(cls.caller)
-        if info['result']['value'] is None:
-            print("Create solana caller account...")
-            caller = cls.loader.createEtherAccount(cls.caller_ether)
-            print("Done")
-            print("solana caller:", caller, 'cls.caller:', cls.caller)
-
-        cls.caller_nonce = getTransactionCount(client, cls.caller)
+        if getBalance(cls.caller) == 0:
+            print("Create caller account...")
+            _ = cls.loader.createEtherAccount(cls.caller_ether)
+            print("Done\n")
 
         print('Account:', cls.acc.public_key(), bytes(cls.acc.public_key()).hex())
         print("Caller:", cls.caller_ether.hex(), cls.caller_nonce, "->", cls.caller,
               "({})".format(bytes(PublicKey(cls.caller)).hex()))
 
-        erc20_id_ether = keccak_256(rlp.encode((cls.caller_ether, cls.caller_nonce))).digest()[-20:]
+        cls.trx_count = getTransactionCount(client, cls.caller)
+
+        erc20_id_ether = keccak_256(rlp.encode((cls.caller_ether, cls.trx_count))).digest()[-20:]
         (cls.erc20Id_precalculated, _) = cls.loader.ether2program(erc20_id_ether)
         print("cls.erc20Id_precalculated:", cls.erc20Id_precalculated)
 
@@ -118,13 +98,6 @@ class EvmLoaderTests(unittest.TestCase):
         else:
             return res[17:61]
 
-    @staticmethod
-    def changeOwner(acc, owner):
-        spl = SplToken(solana_url)
-        res = spl.call("authorize {} owner {}".format(acc, owner))
-        pos = res.find("New owner: ")
-        if owner != res[pos + 11:pos + 55]:
-            raise Exception("change owner error")
 
     @staticmethod
     def tokenMint(mint_id, recipient, amount, owner=None):
@@ -142,8 +115,10 @@ class EvmLoaderTests(unittest.TestCase):
         return int(res.rstrip())
 
     def erc20_deposit(self, payer, amount, erc20, erc20_code, balance_erc20, mint_id, receiver_erc20):
+        func_name = abi.function_signature_to_4byte_selector('deposit(uint256,address,uint256,uint256)')
+
         input = bytes.fromhex(
-            "6f0372af" +
+            func_name.hex() +
             base58.b58decode(payer).hex() +
             str("%024x" % 0) + receiver_erc20.hex() +
             self.acc.public_key()._key.hex() +
@@ -181,22 +156,17 @@ class EvmLoaderTests(unittest.TestCase):
                                    ]))
 
         result = send_transaction(client, trx, self.acc)
-        print(result)
-        messages = result["result"]["meta"]["logMessages"]
-        res = messages[-1]
-        print('erc20_deposit:', res)
-        if any(search("Program %s failed" % evm_loader_id, m) for m in messages):
-            raise Exception("Invalid program logs: Program %s failed" % evm_loader_id)
-        else:
-            src_data = result['result']['meta']['innerInstructions'][0]['instructions'][2]['data']
-            data = base58.b58decode(src_data)
-            instruction = data[0]
-            self.assertEqual(instruction, 6)  # 6 means OnReturn
-            self.assertLess(data[1], 0xd0)  # less 0xd0 - success
-            value = data[2:]
-            ret = int.from_bytes(value, "little")
-            print('erc20_deposit:', 'OK' if ret != 0 else 'FAIL')
-            return ret
+
+        src_data = result['result']['meta']['innerInstructions'][0]['instructions'][2]['data']
+        data = base58.b58decode(src_data)
+        instruction = data[0]
+        self.assertEqual(instruction, 6)  # 6 means OnReturn
+        self.assertLess(data[1], 0xd0)  # less 0xd0 - success
+        value = data[2:]
+        ret = int.from_bytes(value, "big")
+        self.assertEqual(ret, 1)
+        print('erc20_deposit:', 'OK' if ret != 0 else 'FAIL')
+        return ret
 
     def erc20_withdraw(self, receiver, amount, erc20, erc20_code, balance_erc20, mint_id):
         input = bytes.fromhex(
@@ -232,10 +202,10 @@ class EvmLoaderTests(unittest.TestCase):
                                    ]))
 
         result = send_transaction(client, trx, self.acc)
-        print(result)
+        # print(result)
         messages = result["result"]["meta"]["logMessages"]
         res = messages[-1]
-        print('erc20_withdraw:', res)
+        # print('erc20_withdraw:', res)
         if any(search("Program %s failed" % evm_loader_id, m) for m in messages):
             raise Exception("Invalid program logs: Program %s failed" % evm_loader_id)
         else:
@@ -268,7 +238,7 @@ class EvmLoaderTests(unittest.TestCase):
                                    ]))
 
         result = send_transaction(client, trx, self.acc)
-        print(result)
+        # print(result)
         messages = result["result"]["meta"]["logMessages"]
         if any(search("Program %s failed" % evm_loader_id, m) for m in messages):
             raise Exception("Invalid program logs: Program %s failed" % evm_loader_id)
@@ -368,6 +338,8 @@ class EvmLoaderTests(unittest.TestCase):
         if any(search("Program %s failed" % evm_loader_id, m) for m in messages):
             raise Exception("Invalid program logs: Program %s failed" % evm_loader_id)
         else:
+            print("!!!!!!!!!")
+            print(res)
             return res
 
     def test_erc20(self):
@@ -377,12 +349,12 @@ class EvmLoaderTests(unittest.TestCase):
         balance_erc20 = self.createTokenAccount(token, self.erc20Id_precalculated)
         print("balance_erc20:", balance_erc20)
 
-        (erc20Id, erc20Id_ether, erc20_code) = self.loader.deploy_erc20("ERC20.bin"
+        (erc20Id, erc20Id_ether, erc20_code) = deploy_erc20(self.loader,"erc20_ctor_uninit.hex"
                                                                         , "erc20.binary"
                                                                         , token
                                                                         , balance_erc20
                                                                         , self.caller
-                                                                        , self.caller_ether)
+                                                                        )
         print("erc20_id:", erc20Id)
         print("erc20_id_ethereum:", erc20Id_ether.hex())
         print("erc20_code:", erc20_code)
@@ -393,9 +365,6 @@ class EvmLoaderTests(unittest.TestCase):
 
         client_acc = self.createTokenAccount(token)
 
-        # Remove changeOwner because of createTokenAccount(token, self.erc20Id_precalculated)
-        # self.changeOwner(balance_erc20, erc20Id)
-        # print("balance_erc20 owner changed to {}".format(erc20Id))
         mint_amount = 100
         self.tokenMint(token, client_acc, mint_amount)
         assert (self.tokenBalance(client_acc) == mint_amount)
