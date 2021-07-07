@@ -15,7 +15,7 @@ use std::convert::TryInto;
 use arrayref::{array_ref, array_refs};
 use crate::{
     solidity_account::SolidityAccount,
-    utils::{keccak256_h256, keccak256_h256_v, keccak256_digest},
+    utils::{keccak256_h256, keccak256_h256_v}, //, keccak256_digest},
 };
 
 /// Account storage
@@ -112,7 +112,8 @@ impl<'a, 's, S> SolanaBackend<'a, 's, S> where S: AccountStorage {
         debug_print!("ecrecover");
         debug_print!("input: {}", &hex::encode(&input));
     
-        if input.len() != 128 {
+        Some(Capture::Exit((ExitReason::Succeed(evm::ExitSucceed::Returned), vec![0; 32])))
+/*        if input.len() != 128 {
             return Some(Capture::Exit((ExitReason::Succeed(evm::ExitSucceed::Returned), vec![0; 32])));
         }
 
@@ -140,7 +141,7 @@ impl<'a, 's, S> SolanaBackend<'a, 's, S> where S: AccountStorage {
         address[0..12].fill(0);
         debug_print!("{}", &hex::encode(&address));
 
-        Some(Capture::Exit((ExitReason::Succeed(evm::ExitSucceed::Returned), address)))
+        Some(Capture::Exit((ExitReason::Succeed(evm::ExitSucceed::Returned), address)))*/
     }
 
     /// Get chain id

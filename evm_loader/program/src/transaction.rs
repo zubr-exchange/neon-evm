@@ -122,11 +122,10 @@ impl rlp::Decodable for UnsignedTransaction {
 
 pub fn verify_tx_signature(signature: &[u8], unsigned_trx: &[u8]) -> Result<H160, secp256k1::Error> {
     let digest = keccak256_digest(unsigned_trx);
-    let message = secp256k1::Message::parse_slice(&digest)?;
+    let message = secp256k1::Message::from_slice(&digest)?;
+    let id = secp256k1::recovery::RecoveryId::from_i32(signature[64] as i32)?;
+    let signature = secp256k1::recovery::RecoverableSignature::from_compact(&signature[0..64], id)?;
+    let public_key = secp256k1::Secp256k1::verification_only().recover(&message, &signature).unwrap();
 
-    let recovery_id = secp256k1::RecoveryId::parse(signature[64])?;
-    let signature = secp256k1::Signature::parse_slice(&signature[0..64])?;
-
-    let public_key = secp256k1::recover(&message, &signature, &recovery_id)?;
     Ok(keccak256_h256(&public_key.serialize()[1..]).into())
 }
