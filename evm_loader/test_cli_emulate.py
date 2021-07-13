@@ -387,16 +387,21 @@ class EmulateTest(unittest.TestCase):
         balance1 = self.spl_token.balance(self.token_acc1)
         balance2 = self.spl_token.balance(self.token_acc2)
         balance3 = self.spl_token.balance(self.token_acc3)
+        print('balance1=', balance1)
+        print('balance2=', balance2)
+        print('balance3=', balance3)
         mint_amount = 100
+        print('mint_amount=', mint_amount)
         self.spl_token.mint(self.token, self.token_acc1, mint_amount)
         self.assertEqual(self.spl_token.balance(self.token_acc1), balance1 + mint_amount)
         self.assertEqual(self.spl_token.balance(self.token_acc2), balance2)
         self.assertEqual(self.spl_token.balance(self.token_acc3), balance3)
 
-        transfer_amount = 60  # first transfer 60/100 enough, second transfer 60/40 not enough
+        transfer_amount = int((balance1 + mint_amount)/2 + 1)  # first transfer 51/100 enough, second transfer 51/49 not enough
+        print('transfer_amount=', transfer_amount)
 
-        # the first transfer 60 of 100
-        # - by contract logic in this case it will be transferred 60 (full) to token_acc2 (not to token_acc3)
+        # the first transfer 51 of 100
+        # - by contract logic in this case it will be transferred 51 (full) to token_acc2 (not to token_acc3)
         # so it should be token_acc2 in the emulation result
 
         tmpl_json = {
@@ -491,10 +496,10 @@ class EmulateTest(unittest.TestCase):
         self.assertEqual(self.spl_token.balance(self.token_acc2), balance2 + transfer_amount)
         self.assertEqual(self.spl_token.balance(self.token_acc3), balance3)
 
-        # the next transfer 60 but only 40
+        # the next transfer 51 but only 49
         # - by contract logic in this case
-        #   at first it will be transferred 60(full) to token_acc2 (but failed)
-        #   at second it will be transferred only 30(half) to token_acc3
+        #   at first it will be transferred 51(full) to token_acc2 (but failed)
+        #   at second it will be transferred only 51/2(half) to token_acc3
         # so it should be token_acc2 and token_acc3 in the emulation result
 
         tmpl_json = {
