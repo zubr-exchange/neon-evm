@@ -118,9 +118,13 @@ class NeonEvmClient:
         self.mode = ExecuteMode.SINGLE
         self.solana_wallet = solana_wallet
         self.evm_loader = evm_loader
+        self.skip_preflight = False
 
     def set_execute_mode(self, new_mode):
         self.mode = ExecuteMode(new_mode)
+
+    def set_skip_preflight(self, new_value=True):
+        self.skip_preflight = new_value
 
     def send_ethereum_trx(self, ethereum_transaction) -> types.RPCResponse:
         assert (isinstance(ethereum_transaction, EthereumTransaction))
@@ -216,7 +220,7 @@ class NeonEvmClient:
             trx.instructions[-1].keys.extend(ethereum_transaction.trx_account_metas)
         trx.instructions[-1].keys \
             .append(AccountMeta(pubkey=PublicKey(sysvarclock), is_signer=False, is_writable=False))
-        return send_transaction(client, trx, self.solana_wallet)
+        return send_transaction(client, trx, self.solana_wallet, self.skip_preflight)
 
 
 def confirm_transaction(http_client, tx_sig, confirmations=1):
@@ -540,8 +544,8 @@ def wallet_path():
     raise Exception("cannot get keypair path")
 
 
-def send_transaction(client, trx, acc):
-    result = client.send_transaction(trx, acc, opts=TxOpts(skip_confirmation=True, skip_preflight=True, preflight_commitment="confirmed"))
+def send_transaction(client, trx, acc, skip_preflight=False):
+    result = client.send_transaction(trx, acc, opts=TxOpts(skip_confirmation=True, skip_preflight=skip_preflight, preflight_commitment="confirmed"))
     confirm_transaction(client, result["result"])
     result = client.get_confirmed_transaction(result["result"])
     return result

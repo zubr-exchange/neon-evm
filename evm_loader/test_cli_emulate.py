@@ -131,6 +131,7 @@ class EmulateTest(unittest.TestCase):
 
         cls.neon_evm_client = NeonEvmClient(cls.acc, cls.loader)
         cls.neon_evm_client.set_execute_mode(ExecuteMode.ITERATIVE)
+        cls.neon_evm_client.set_skip_preflight()
 
         # Create ethereum account for user account
         cls.caller_eth_pr_key = w3.eth.account.from_key(cls.acc.secret_key())
