@@ -288,7 +288,7 @@ class EmulateTest(unittest.TestCase):
         self.assertEqual(self.spl_token.balance(self.token_acc1), balance1 + mint_amount - 2 * transfer_amount)
         self.assertEqual(self.spl_token.balance(self.token_acc2), balance2 + 2 * transfer_amount)
 
-    @unittest.skip("test is disabled until the problem #120 is solved: neon-evm does not return an external call error. https://github.com/neonlabsorg/neon-evm/issues/120")
+    # @unittest.skip("test is disabled until the problem #120 is solved: neon-evm does not return an external call error. https://github.com/neonlabsorg/neon-evm/issues/120")
     def test_unsuccessful_cli_emulate(self):
         print('\n-----------------------------')
         print('test_unsuccessful_cli_emulate')
