@@ -58,20 +58,18 @@ class init_wallet():
         print("\ntest_performance.py init")
 
         wallet = RandomAccount()
-        if getBalance(wallet.get_acc().public_key()) == 0:
-            tx = client.request_airdrop(wallet.get_acc().public_key(), 100000 * 10 ** 9, commitment=Confirmed)
-            confirm_transaction(client, tx["result"])
+        tx = client.request_airdrop(wallet.get_acc().public_key(), 100000 * 10 ** 9, commitment=Confirmed)
+        confirm_transaction(client, tx["result"])
 
-        assert (getBalance(wallet.get_acc().public_key()) > 0)
+        if getBalance(wallet.get_acc().public_key()) == 0:
+            print("request_airdrop error")
+            exit(0)
 
         cls.loader = EvmLoader(wallet, evm_loader_id)
         cls.acc = wallet.get_acc()
-        cls.keypath = wallet.get_path()
 
         # Create ethereum account for user account
-        # cls.caller_ether = eth_keys.PrivateKey(cls.acc.secret_key()).public_key.to_canonical_address()
-        cls.caller_eth_pr_key = w3.eth.account.from_key(cls.acc.secret_key())
-        cls.caller_ether = bytes.fromhex(cls.caller_eth_pr_key.address[2:])
+        cls.caller_ether = eth_keys.PrivateKey(cls.acc.secret_key()).public_key.to_canonical_address()
         (cls.caller, cls.caller_nonce) = cls.loader.ether2program(cls.caller_ether)
 
         if getBalance(cls.caller) == 0:
@@ -239,15 +237,13 @@ def deploy_contracts(args):
     instance = init_wallet()
     instance.init()
 
-    res = solana_cli().call("config set --keypair " + instance.keypath + " -C config.yml"+args.postfix)
-
-    res = instance.loader.deploy(factory_path, caller=instance.caller, config="config.yml"+args.postfix)
+    res = instance.loader.deploy(factory_path, instance.caller)
     (factory, factory_eth, factory_code) = (res['programId'], bytes.fromhex(res['ethereum'][2:]), res['codeId'])
 
+    erc20_filehash = get_filehash(factory, factory_code, factory_eth, instance.acc)
     print("factory", factory)
     print ("factory_eth", factory_eth.hex())
     print("factory_code", factory_code)
-    erc20_filehash = get_filehash(factory, factory_code, factory_eth, instance.acc)
     func_name = bytearray.fromhex("03") + abi.function_signature_to_4byte_selector('create_erc20(bytes32)')
     receipt_list = []
 
