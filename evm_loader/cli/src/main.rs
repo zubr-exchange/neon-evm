@@ -907,6 +907,26 @@ fn make_clean_hex(in_str: &str) -> &str {
 }
 
 // Return H160 for an argument
+fn h160_or_deploy_of(matches: &ArgMatches<'_>, name: &str) -> Option<H160> {
+    if matches.value_of(name) == Some("deploy") {
+        return None;
+    }
+    matches.value_of(name).map(|value| {
+        H160::from_str(make_clean_hex(value)).unwrap()
+    })
+}
+
+// Return an error if string cannot be parsed as a H160 address
+fn is_valid_h160_or_deploy<T>(string: T) -> Result<(), String> where T: AsRef<str>,
+{
+    if string.as_ref() == "deploy" {
+        return Ok(());
+    }
+    H160::from_str(make_clean_hex(string.as_ref())).map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+// Return H160 for an argument
 fn h160_of(matches: &ArgMatches<'_>, name: &str) -> Option<H160> {
     matches.value_of(name).map(|value| {
         H160::from_str(make_clean_hex(value)).unwrap()
