@@ -492,8 +492,8 @@ def mint_spl(accounts, instance):
                 keys=[
                     AccountMeta(pubkey=ETH_TOKEN_MINT_ID, is_signer=False, is_writable=True),
                     AccountMeta(pubkey=dest, is_signer=False, is_writable=True),
-                    # AccountMeta(pubkey=instance.regular_acc.public_key(), is_signer=True, is_writable=True),
-                    AccountMeta(pubkey=instance.acc.public_key(), is_signer=True, is_writable=True),
+                    AccountMeta(pubkey=instance.regular_acc.public_key(), is_signer=True, is_writable=True),
+                    # AccountMeta(pubkey=instance.acc.public_key(), is_signer=True, is_writable=True),
                 ]))
 
         # ins = spl_token.mint_to(
