@@ -475,14 +475,8 @@ def mint_spl(accounts, instance):
         dest = get_associated_token_address(PublicKey(acc_sol), ETH_TOKEN_MINT_ID)
         print("mint: ", dest)
 
-        # to =spl.token.client.Token(client, ETH_TOKEN_MINT_ID, TOKEN_PROGRAM_ID, instance.acc)
-        # to.mint_to(
-        #     dest = get_associated_token_address(PublicKey(acc_sol), ETH_TOKEN_MINT_ID),
-        #     mint_authority= instance.regular_acc,
-        #     amount= transfer_sum,
-        # )
         data = spl.token._layouts.INSTRUCTIONS_LAYOUT.build(
-            dict(instruction_type=InstructionType.MINT_TO, args=dict(amount=7)))
+            dict(instruction_type=InstructionType.MINT_TO2, args=dict(amount= 7000000000, decimals=9)))
 
         trx = Transaction()
         trx.add(
@@ -492,55 +486,27 @@ def mint_spl(accounts, instance):
                 keys=[
                     AccountMeta(pubkey=ETH_TOKEN_MINT_ID, is_signer=False, is_writable=True),
                     AccountMeta(pubkey=dest, is_signer=False, is_writable=True),
-                    AccountMeta(pubkey=instance.regular_acc.public_key(), is_signer=True, is_writable=True),
-                    # AccountMeta(pubkey=instance.acc.public_key(), is_signer=True, is_writable=True),
+                    AccountMeta(pubkey=instance.regular_acc.public_key(), is_signer=True, is_writable=False),
                 ]))
 
-        # ins = spl_token.mint_to(
-        #         spl_token.MintToParams(
-        #             program_id=TOKEN_PROGRAM_ID,
-        #             mint=ETH_TOKEN_MINT_ID,
-        #             dest=get_associated_token_address(PublicKey(acc_sol), ETH_TOKEN_MINT_ID),
-        #             mint_authority=instance.regular_acc.public_key(),
-        #             amount=10,
-        #             signers=[],
-                # )
-            # )
-
-        # trx = Transaction()
-        # trx.add(ins)
-        # trx = Transaction().add(
-        #     spl_token.mint_to(
-        #         spl_token.MintToParams(
-        #             program_id=TOKEN_PROGRAM_ID,
-        #             mint=ETH_TOKEN_MINT_ID,
-        #             dest=get_associated_token_address(PublicKey(acc_sol), ETH_TOKEN_MINT_ID),
-        #             mint_authority=instance.regular_acc.public_key(),
-        #             amount=10,
-        #             signers=[],
-                # )
-            # )
-        # )
-        res = client.send_transaction(trx, instance.regular_acc)
-        # res = client.send_transaction(trx, instance.acc)
-        # res = client.send_transaction(trx, instance.acc,
-        #                               opts=TxOpts(skip_confirmation=True, skip_preflight=True,
-        #                                           preflight_commitment="confirmed"))
+        res = client.send_transaction(trx, instance.regular_acc,
+                                      opts=TxOpts(skip_confirmation=True, skip_preflight=True,
+                                                  preflight_commitment="confirmed"))
         receipt_list.append(res["result"])
 
     total = 0
     receipt_error = 0
     account_minted = []
-    # for receipt in receipt_list:
-    #     confirm_transaction(client, receipt)
-    #     res = client.get_confirmed_transaction(receipt)
-    #     if res['result'] == None:
-    #         receipt_error = receipt_error + 1
-    #         print(res['result'])
-    #     else:
-    #         account_minted.append(acc_eth_hex)
-    #         total = total + 1
-    #
+    for receipt in receipt_list:
+        confirm_transaction(client, receipt)
+        res = client.get_confirmed_transaction(receipt)
+        if res['result'] == None:
+            receipt_error = receipt_error + 1
+            print(res['result'])
+        else:
+            account_minted.append(acc_eth_hex)
+            total = total + 1
+
     event_error = 0
     nonce_error = 0
     unknown_error = 0
