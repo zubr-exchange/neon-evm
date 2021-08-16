@@ -492,12 +492,12 @@ def mint_spl(accounts, instance):
         res = client.send_transaction(trx, instance.regular_acc,
                                       opts=TxOpts(skip_confirmation=True, skip_preflight=True,
                                                   preflight_commitment="confirmed"))
-        receipt_list.append(res["result"])
+        receipt_list.append((acc_eth_hex, res["result"]))
 
     total = 0
     receipt_error = 0
     account_minted = []
-    for receipt in receipt_list:
+    for (acc_eth_hex, receipt) in receipt_list:
         confirm_transaction(client, receipt)
         res = client.get_confirmed_transaction(receipt)
         if res['result'] == None:
@@ -760,6 +760,52 @@ def verify_trx(args):
     print("receipt_error:", receipt_error)
     print("revert_error:", revert_error)
 
+
+def verify_trx_spl(args):
+    verify = open(verify_file+args.postfix, 'r')
+    total = 0
+    receipt_error = 0
+    nonce_error = 0
+    unknown_error = 0
+    revert_error = 0
+
+    for line in verify:
+        total = total + 1
+        if args.count != None:
+            if total > args.count:
+                break
+        success = False
+        (erc20_eth, payer_eth, receiver_eth, receipt) = json.loads(line)
+        res = client.get_confirmed_transaction(receipt)
+        if res['result'] == None:
+            receipt_error = receipt_error + 1
+            print(success)
+        else:
+            if res['result']['meta']['err'] == None:
+                if found_revert(res['result']):
+                    revert_error = revert_error + 1
+                success = True
+            else:
+                print(res["result"])
+                found = False
+                for err in res['result']['meta']['err']['InstructionError']:
+                    if err == "InvalidArgument":
+                        found = True
+                        break
+                if found:
+                    nonce_error = nonce_error + 1
+                else:
+                    unknown_error = unknown_error + 1
+            print(success, res['result']['slot'])
+
+
+    print("\ntotal:", total)
+    print("nonce_error:", nonce_error)
+    print("unknown_error:", unknown_error)
+    print("receipt_error:", receipt_error)
+    print("revert_error:", revert_error)
+
+
 def create_senders(args):
     total = 0
     receipt_list = []
@@ -820,7 +866,7 @@ def create_transactions_spl(args):
             bytes().fromhex(payer_eth),
             "",
             bytes.fromhex(payer_prkey),
-            transfer_sum
+            transfer_sum*10**9
         )
         trx = {}
         trx['from_addr'] = from_addr.hex()
@@ -840,7 +886,8 @@ def create_transactions_spl(args):
 parser = argparse.ArgumentParser(description='Process some integers.')
 parser.add_argument('--count', metavar="count of the transaction",  type=int,  help='count transaction (>=1)', default=trx_cnt)
 parser.add_argument('--step', metavar="step of the test", type=str,  help='for ERC20.transfer: deploy, create_senders, create_acc, create_trx, send_trx, '
-                                                                           'veryfy_trx\n for spl-token transfer: create_senders,  ')
+                                                                           'veryfy_trx\n for spl-token transfer: create_senders, create_acc_spl, create_trx_spl,'
+                                                                          ' verify_trx_spl')
 parser.add_argument('--postfix', metavar="filename postfix", type=str,  help='0,1,2..', default='')
 parser.add_argument('--delay', metavar="delay between transactions in milliseconds (only for deploy, create_acc steps)", type=int,  help='10, 20, ..', default=0)
 
@@ -862,5 +909,7 @@ elif args.step == "create_senders":
     create_senders(args)
 elif args.step == "verify_trx":
     verify_trx(args)
+elif args.step == "verify_trx_spl":
+    verify_trx_spl(args)
 
 
