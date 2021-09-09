@@ -3,6 +3,7 @@
 use std::convert::TryInto as _;
 
 use solana_program::pubkey::Pubkey;
+use evm::H160;
 
 // ERC20 method ids:
 //--------------------------------------------------
@@ -50,47 +51,55 @@ pub fn method(id: &[u8]) -> Method {
     }
 }
 
-/// Returns total sum of all balances.
+/// Returns total amount of tokens.
 pub fn total_supply(token_mint: Pubkey) -> u64 {
     debug_print!(
-        "call_inner_erc20_wrapper totalSupply for token {})",
+        "call_inner_erc20_wrapper total_supply for token {})",
         token_mint
     );
     0
 }
 
-pub fn balance_of(token_mint: Pubkey) -> u64 {
+/// Returns the balance of the address.
+pub fn balance_of(token_mint: Pubkey, owner: H160) -> u64 {
     debug_print!(
-        "call_inner_erc20_wrapper balance_of for token {})",
-        token_mint
+        "call_inner_erc20_wrapper balance_of {} for token {})",
+        owner, token_mint
     );
     0
 }
 
-pub fn transfer(token_mint: Pubkey) -> u64 {
+/// Sends tokens to the recipient.
+/// Returns true if the transfer was successful, false otherwise.
+pub fn transfer(token_mint: Pubkey) -> bool {
     debug_print!(
         "call_inner_erc20_wrapper transfer for token {})",
         token_mint
     );
-    0
+    false
 }
 
-pub fn transfer_from(token_mint: Pubkey) -> u64 {
+/// Sends tokens to the recipient from another address on the condition it is approved by that address.
+/// Returns true if the transfer was successful, false otherwise.
+pub fn transfer_from(token_mint: Pubkey) -> bool {
     debug_print!(
         "call_inner_erc20_wrapper transfer_from for token {})",
         token_mint
     );
-    0
+    false
 }
 
-pub fn approve(token_mint: Pubkey) -> u64 {
+/// Approves spender to spend tokens.
+/// Returns true if the approval was successful, false otherwise.
+pub fn approve(token_mint: Pubkey) -> bool {
     debug_print!(
         "call_inner_erc20_wrapper approve for token {})",
         token_mint
     );
-    0
+    false
 }
 
+/// Returns amount of remaining tokens allowed to spend.
 pub fn allowance(token_mint: Pubkey) -> u64 {
     debug_print!(
         "call_inner_erc20_wrapper allowance for token {})",

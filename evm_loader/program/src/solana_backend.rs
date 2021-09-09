@@ -660,7 +660,6 @@ impl<'a, 's, S> SolanaBackend<'a, 's, S> where S: AccountStorage {
         let (method_id, _) = rest.split_at(4);
         debug_print!("call_inner_erc20_wrapper token_mint: {}", hex::encode(&token_mint));
         debug_print!("call_inner_erc20_wrapper method_id: {:?}", method_id);
-
         let token_mint = Pubkey::new_from_array(token_mint.try_into().expect("failed cast from slice into array"));
 
         match erc20::method(method_id) {
@@ -671,7 +670,9 @@ impl<'a, 's, S> SolanaBackend<'a, 's, S> where S: AccountStorage {
                 Some(Capture::Exit((ExitReason::Succeed(evm::ExitSucceed::Returned), output.to_vec())))
             },
             Method::BalanceOf => {
-                let r = erc20::balance_of(token_mint);
+                let (owner, _) = rest.split_at(32);
+                let owner = H160::from_slice(owner);
+                let r = erc20::balance_of(token_mint, owner);
                 dbg!(r);
                 let output = [2_u8; 32];
                 Some(Capture::Exit((ExitReason::Succeed(evm::ExitSucceed::Returned), output.to_vec())))
