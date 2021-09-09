@@ -69,22 +69,22 @@ pub fn balance_of(token_mint: Pubkey, owner: H160) -> u64 {
     0
 }
 
-/// Sends tokens to the recipient.
+/// Sends tokens to the recipient from the sender.
 /// Returns true if the transfer was successful, false otherwise.
-pub fn transfer(token_mint: Pubkey) -> bool {
+pub fn transfer(token_mint: Pubkey, recipient: H160, amount: u64) -> bool {
     debug_print!(
-        "call_inner_erc20_wrapper transfer for token {})",
-        token_mint
+        "call_inner_erc20_wrapper {} transfer to {} for token {})",
+        amount, recipient, token_mint
     );
     false
 }
 
 /// Sends tokens to the recipient from another address on the condition it is approved by that address.
 /// Returns true if the transfer was successful, false otherwise.
-pub fn transfer_from(token_mint: Pubkey) -> bool {
+pub fn transfer_from(token_mint: Pubkey, sender: H160, recipient: H160, amount: u64) -> bool {
     debug_print!(
-        "call_inner_erc20_wrapper transfer_from for token {})",
-        token_mint
+        "call_inner_erc20_wrapper {} transfer_from {} to {} for token {})",
+        amount, sender, recipient, token_mint
     );
     false
 }

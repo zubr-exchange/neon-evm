@@ -657,10 +657,10 @@ impl<'a, 's, S> SolanaBackend<'a, 's, S> where S: AccountStorage {
         debug_print!("call_inner_erc20_wrapper({})", hex::encode(&input));
 
         let (token_mint, rest) = input.split_at(32);
-        let (method_id, _) = rest.split_at(4);
-        debug_print!("call_inner_erc20_wrapper token_mint: {}", hex::encode(&token_mint));
-        debug_print!("call_inner_erc20_wrapper method_id: {:?}", method_id);
         let token_mint = Pubkey::new_from_array(token_mint.try_into().expect("failed cast from slice into array"));
+        let (method_id, _) = rest.split_at(4);
+        debug_print!("call_inner_erc20_wrapper token_mint: {}", token_mint);
+        debug_print!("call_inner_erc20_wrapper method_id: {:?}", method_id);
 
         match erc20::method(method_id) {
             Method::TotalSupply => {
@@ -678,13 +678,23 @@ impl<'a, 's, S> SolanaBackend<'a, 's, S> where S: AccountStorage {
                 Some(Capture::Exit((ExitReason::Succeed(evm::ExitSucceed::Returned), output.to_vec())))
             },
             Method::Transfer => {
-                let r = erc20::transfer(token_mint);
+                let (recipient, rest) = rest.split_at(32);
+                let recipient = H160::from_slice(recipient);
+                let (amount, _) = rest.split_at(32);
+                let amount = U256::from_big_endian(amount);
+                let r = erc20::transfer(token_mint, recipient, amount.as_u64());
                 dbg!(r);
                 let output = [3_u8; 32];
                 Some(Capture::Exit((ExitReason::Succeed(evm::ExitSucceed::Returned), output.to_vec())))
             },
             Method::TransferFrom => {
-                let r = erc20::transfer_from(token_mint);
+                let (sender, rest) = rest.split_at(32);
+                let sender = H160::from_slice(sender);
+                let (recipient, rest) = rest.split_at(32);
+                let recipient = H160::from_slice(recipient);
+                let (amount, _) = rest.split_at(32);
+                let amount = U256::from_big_endian(amount);
+                let r = erc20::transfer_from(token_mint, sender, recipient, amount.as_u64());
                 dbg!(r);
                 let output = [4_u8; 32];
                 Some(Capture::Exit((ExitReason::Succeed(evm::ExitSucceed::Returned), output.to_vec())))
