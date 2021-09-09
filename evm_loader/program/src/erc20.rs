@@ -2,6 +2,8 @@
 
 use std::convert::TryInto as _;
 
+use solana_program::pubkey::Pubkey;
+
 // ERC20 method ids:
 //--------------------------------------------------
 // totalSupply()                         => 18160ddd
@@ -31,7 +33,7 @@ pub enum Method {
     Unknown,
 }
 
-/// Returns method of a 4-byte Ethereum method identifier.
+/// Returns method by a 4-byte Ethereum method identifier.
 pub fn method(id: &[u8]) -> Method {
     if id.len() != ID_LEN {
         return Method::Unknown;
@@ -48,14 +50,51 @@ pub fn method(id: &[u8]) -> Method {
     }
 }
 
-pub fn total_supply() {}
+/// Returns total sum of all balances.
+pub fn total_supply(token_mint: Pubkey) -> u64 {
+    debug_print!(
+        "call_inner_erc20_wrapper totalSupply for token {})",
+        token_mint
+    );
+    0
+}
 
-pub fn balance_of() {}
+pub fn balance_of(token_mint: Pubkey) -> u64 {
+    debug_print!(
+        "call_inner_erc20_wrapper balance_of for token {})",
+        token_mint
+    );
+    0
+}
 
-pub fn transfer() {}
+pub fn transfer(token_mint: Pubkey) -> u64 {
+    debug_print!(
+        "call_inner_erc20_wrapper transfer for token {})",
+        token_mint
+    );
+    0
+}
 
-pub fn transfer_from() {}
+pub fn transfer_from(token_mint: Pubkey) -> u64 {
+    debug_print!(
+        "call_inner_erc20_wrapper transfer_from for token {})",
+        token_mint
+    );
+    0
+}
 
-pub fn approve() {}
+pub fn approve(token_mint: Pubkey) -> u64 {
+    debug_print!(
+        "call_inner_erc20_wrapper approve for token {})",
+        token_mint
+    );
+    0
+}
 
-pub fn allowance() {}
+pub fn allowance(token_mint: Pubkey) -> u64 {
+    debug_print!(
+        "call_inner_erc20_wrapper allowance for token {})",
+        token_mint
+    );
+    0
+}

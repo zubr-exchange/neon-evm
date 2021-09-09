@@ -661,40 +661,42 @@ impl<'a, 's, S> SolanaBackend<'a, 's, S> where S: AccountStorage {
         debug_print!("call_inner_erc20_wrapper token_mint: {}", hex::encode(&token_mint));
         debug_print!("call_inner_erc20_wrapper method_id: {:?}", method_id);
 
+        let token_mint = Pubkey::new_from_array(token_mint.try_into().expect("failed cast from slice into array"));
+
         match erc20::method(method_id) {
             Method::TotalSupply => {
-                debug_print!("call_inner_erc20_wrapper totalSupply");
-                let r = erc20.total_supply(token_mint);
+                let r = erc20::total_supply(token_mint);
+                dbg!(r);
                 let output = [1_u8; 32];
                 Some(Capture::Exit((ExitReason::Succeed(evm::ExitSucceed::Returned), output.to_vec())))
             },
             Method::BalanceOf => {
-                debug_print!("call_inner_erc20_wrapper balanceOf");
-                let r = erc20.balance_of(token_mint);
+                let r = erc20::balance_of(token_mint);
+                dbg!(r);
                 let output = [2_u8; 32];
                 Some(Capture::Exit((ExitReason::Succeed(evm::ExitSucceed::Returned), output.to_vec())))
             },
             Method::Transfer => {
-                debug_print!("call_inner_erc20_wrapper transfer");
-                let r = erc20.transfer(token_mint);
+                let r = erc20::transfer(token_mint);
+                dbg!(r);
                 let output = [3_u8; 32];
                 Some(Capture::Exit((ExitReason::Succeed(evm::ExitSucceed::Returned), output.to_vec())))
             },
             Method::TransferFrom => {
-                debug_print!("call_inner_erc20_wrapper transferFrom");
-                let r = erc20.transfer_from(token_mint);
+                let r = erc20::transfer_from(token_mint);
+                dbg!(r);
                 let output = [4_u8; 32];
                 Some(Capture::Exit((ExitReason::Succeed(evm::ExitSucceed::Returned), output.to_vec())))
             },
             Method::Approve => {
-                debug_print!("call_inner_erc20_wrapper approve");
-                let r = erc20.approve(token_mint);
+                let r = erc20::approve(token_mint);
+                dbg!(r);
                 let output = [5_u8; 32];
                 Some(Capture::Exit((ExitReason::Succeed(evm::ExitSucceed::Returned), output.to_vec())))
             },
             Method::Allowance => {
-                debug_print!("call_inner_erc20_wrapper allowance");
-                let r = erc20.allowance(token_mint);
+                let r = erc20::allowance(token_mint);
+                dbg!(r);
                 let output = [6_u8; 32];
                 Some(Capture::Exit((ExitReason::Succeed(evm::ExitSucceed::Returned), output.to_vec())))
             },
