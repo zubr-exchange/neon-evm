@@ -4,9 +4,10 @@
 #----------------------------------------
 # Environment variables:
 # WEB3_RPC_URL - contains URL to access the Ethereum network (example: http://localhost:8545)
-# WEB3_PRIVATE_KEY - contains private key of the contract deployer and transaction signer
+# WEB3_ADMIN_KEY - contains private key of the contract deployer
 # WEB3_ADMIN - contains Ethereum address (EOA) of the contract deployer
-# WEB3_USER - contains Ethereum address (EOA)
+# WEB3_USER_KEY -  - contains private key of a user
+# WEB3_USER - contains Ethereum address (EOA) of a user
 # WEB3_ADDRESS - contains Ethereum address of the ERC20 smart contract
 # WEB3_ABI_FILE - contains name of file in which the contract's ABI is stored
 #----------------------------------------------------------------------------
@@ -19,15 +20,17 @@ def check_env(name):
         raise Exception(name)
 
 check_env('WEB3_RPC_URL')
-check_env('WEB3_PRIVATE_KEY')
+check_env('WEB3_ADMIN_KEY')
 check_env('WEB3_ADMIN')
+check_env('WEB3_USER_KEY')
 check_env('WEB3_USER')
 check_env('WEB3_ADDRESS')
 check_env('WEB3_ABI_FILE')
 
 url = environ.get('WEB3_RPC_URL')
-private_key = environ.get('WEB3_PRIVATE_KEY')
+admin_key = environ.get('WEB3_ADMIN_KEY')
 admin = environ.get('WEB3_ADMIN')
+user_key = environ.get('WEB3_USER_KEY')
 user = environ.get('WEB3_USER')
 contract_address = environ.get('WEB3_ADDRESS')
 
@@ -50,7 +53,7 @@ tx = {
     'from': admin
 }
 tx = erc20.functions.transfer(admin, 100000000000000000000).buildTransaction(tx)
-signed_tx = w3.eth.account.sign_transaction(tx, private_key)
+signed_tx = w3.eth.account.sign_transaction(tx, admin_key)
 tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
 tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
 assert tx_receipt != None
@@ -75,7 +78,7 @@ tx = {
     'from': admin
 }
 tx = erc20.functions.transfer(user, 1000).buildTransaction(tx)
-signed_tx = w3.eth.account.sign_transaction(tx, private_key)
+signed_tx = w3.eth.account.sign_transaction(tx, admin_key)
 tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
 tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
 assert tx_receipt != None
@@ -94,7 +97,7 @@ tx = {
     'from': admin
 }
 tx = erc20.functions.approve(user, 100000).buildTransaction(tx)
-signed_tx = w3.eth.account.sign_transaction(tx, private_key)
+signed_tx = w3.eth.account.sign_transaction(tx, admin_key)
 tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
 tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
 assert tx_receipt != None
@@ -106,16 +109,16 @@ print('allowance is', allowance)
 assert allowance == 100000
 
 print()
-print('Testing transferFrom(admin,user,2000)...')
+print('Testing transferFrom(admin,user,1000)...')
 balance0 = erc20.functions.balanceOf(user).call()
 #tx_hash = erc20.functions.transferFrom(admin, user, 2000).transact({'from': admin})
-nonce = w3.eth.get_transaction_count(admin)
+nonce = w3.eth.get_transaction_count(user)
 tx = {
     'nonce': nonce,
-    'from': admin
+    'from': user
 }
 tx = erc20.functions.transferFrom(admin, user, 1000).buildTransaction(tx)
-signed_tx = w3.eth.account.sign_transaction(tx, private_key)
+signed_tx = w3.eth.account.sign_transaction(tx, user_key)
 tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
 tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
 assert tx_receipt != None
