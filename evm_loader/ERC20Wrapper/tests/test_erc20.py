@@ -46,7 +46,6 @@ print('Admin:', admin)
 print('User:', user)
 
 # Supply admin
-#tx_hash = erc20.functions.transfer(admin, 100000000000000000000).transact({'from': admin})
 nonce = w3.eth.get_transaction_count(admin)
 tx = {
     'nonce': nonce,
@@ -71,7 +70,6 @@ print('balanceOf(user) is', balance0)
 
 print()
 print('Testing transfer(user,1000)...')
-#tx_hash = erc20.functions.transfer(user, 1000).transact({'from': admin})
 nonce = w3.eth.get_transaction_count(admin)
 tx = {
     'nonce': nonce,
@@ -90,7 +88,6 @@ assert diff == 1000
 
 print()
 print('Testing approve(user,100000)...')
-#erc20.functions.approve(user, 100000).transact({'from': admin})
 nonce = w3.eth.get_transaction_count(admin)
 tx = {
     'nonce': nonce,
@@ -111,7 +108,6 @@ assert allowance == 100000
 print()
 print('Testing transferFrom(admin,user,1000)...')
 balance0 = erc20.functions.balanceOf(user).call()
-#tx_hash = erc20.functions.transferFrom(admin, user, 2000).transact({'from': admin})
 nonce = w3.eth.get_transaction_count(user)
 tx = {
     'nonce': nonce,
