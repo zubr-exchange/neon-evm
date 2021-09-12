@@ -4,6 +4,7 @@
 #----------------------------------------
 # Environment variables:
 # WEB3_RPC_URL - contains URL to access the Ethereum network (example: http://localhost:8545)
+# WEB3_PRIVATE_KEY - contains private key of the contract deployer and transaction signer
 # WEB3_ADMIN - contains Ethereum address (EOA) of the contract deployer
 # WEB3_USER - contains Ethereum address (EOA)
 # WEB3_ADDRESS - contains Ethereum address of the ERC20 smart contract
@@ -18,12 +19,14 @@ def check_env(name):
         raise Exception(name)
 
 check_env('WEB3_RPC_URL')
+check_env('WEB3_PRIVATE_KEY')
 check_env('WEB3_ADMIN')
 check_env('WEB3_USER')
 check_env('WEB3_ADDRESS')
 check_env('WEB3_ABI_FILE')
 
 url = environ.get('WEB3_RPC_URL')
+private_key = environ.get('WEB3_PRIVATE_KEY')
 admin = environ.get('WEB3_ADMIN')
 user = environ.get('WEB3_USER')
 contract_address = environ.get('WEB3_ADDRESS')
@@ -33,19 +36,30 @@ with open(environ.get('WEB3_ABI_FILE'), 'r') as file:
     abi = file.read()
 erc20 = w3.eth.contract(address=contract_address, abi=abi)
 
-print('Name: ', erc20.functions.name().call())
-print('Symbol: ', erc20.functions.symbol().call())
-print('Decimals: ', erc20.functions.decimals().call())
-print('Admin: ', admin)
-print('User: ', user)
+print('Name:', erc20.functions.name().call())
+print('Symbol:', erc20.functions.symbol().call())
+print('Decimals:', erc20.functions.decimals().call())
+print('Admin:', admin)
+print('User:', user)
+
+# Supply admin
+#tx_hash = erc20.functions.transfer(admin, 100000000000000000000).transact({'from': admin})
+nonce = w3.eth.get_transaction_count(admin)
+tx = {
+    'nonce': nonce,
+    'from': admin
+}
+tx = erc20.functions.transfer(admin, 100000000000000000000).buildTransaction(tx)
+signed_tx = w3.eth.account.sign_transaction(tx, private_key)
+tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+assert tx_receipt != None
 
 print()
 print('Testing totalSupply()...')
-totalSupply = erc20.functions.totalSupply().call()
-print('totalSupply =', totalSupply)
-
-tx_hash = erc20.functions.transfer(admin, 10000000000000000000).transact({'from': admin})
-tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+total_supply = erc20.functions.totalSupply().call()
+print('totalSupply =', total_supply)
+assert total_supply == 10000000000000000000000000000000000000
 
 print()
 print('Testing balanceOf(user)...')
@@ -54,29 +68,60 @@ print('balanceOf(user) is', balance0)
 
 print()
 print('Testing transfer(user,1000)...')
-tx_hash = erc20.functions.transfer(user, 1000).transact({'from': admin})
+#tx_hash = erc20.functions.transfer(user, 1000).transact({'from': admin})
+nonce = w3.eth.get_transaction_count(admin)
+tx = {
+    'nonce': nonce,
+    'from': admin
+}
+tx = erc20.functions.transfer(user, 1000).buildTransaction(tx)
+signed_tx = w3.eth.account.sign_transaction(tx, private_key)
+tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
 tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+assert tx_receipt != None
 balance1 = erc20.functions.balanceOf(user).call()
 print('balanceOf(user) is', balance1)
 diff = balance1 - balance0
 print('Balance of user changed:', diff)
+assert diff == 1000
 
 print()
-print('Testing approve(admin,100000)...')
-erc20.functions.approve(user, 100000).transact({'from': admin})
+print('Testing approve(user,100000)...')
+#erc20.functions.approve(user, 100000).transact({'from': admin})
+nonce = w3.eth.get_transaction_count(admin)
+tx = {
+    'nonce': nonce,
+    'from': admin
+}
+tx = erc20.functions.approve(user, 100000).buildTransaction(tx)
+signed_tx = w3.eth.account.sign_transaction(tx, private_key)
+tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+assert tx_receipt != None
 
 print()
 print('Testing allowance(admin,user)...')
 allowance = erc20.functions.allowance(admin, user).call()
 print('allowance is', allowance)
+assert allowance == 100000
 
 print()
 print('Testing transferFrom(admin,user,2000)...')
 balance0 = erc20.functions.balanceOf(user).call()
-tx_hash = erc20.functions.transferFrom(admin, user, 2000).transact({'from': admin})
+#tx_hash = erc20.functions.transferFrom(admin, user, 2000).transact({'from': admin})
+nonce = w3.eth.get_transaction_count(admin)
+tx = {
+    'nonce': nonce,
+    'from': admin
+}
+tx = erc20.functions.transferFrom(admin, user, 1000).buildTransaction(tx)
+signed_tx = w3.eth.account.sign_transaction(tx, private_key)
+tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
 tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+assert tx_receipt != None
 balance1 = erc20.functions.balanceOf(user).call()
 diff = balance1 - balance0
 print('Balance of user changed:', diff)
+assert diff == 1000
 
 print('\nDone.')
