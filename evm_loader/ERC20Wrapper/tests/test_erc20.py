@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-#----------------------------------------
+#-----------------------------------------
 # Call methods of an ERC20 smart contract.
-#----------------------------------------
+#-----------------------------------------
 # Environment variables:
-# WEB3_RPC_URL - contains URL to access the Ethereum network (example: http://localhost:8545)
+# WEB3_RPC_URL - contains URL to access the Ethereum network (example: http://localhost:9090/solana)
 # WEB3_ADMIN_KEY - contains private key of the contract deployer
 # WEB3_ADMIN - contains Ethereum address (EOA) of the contract deployer
-# WEB3_USER_KEY -  - contains private key of a user
+# WEB3_USER_KEY - contains private key of a user
 # WEB3_USER - contains Ethereum address (EOA) of a user
 # WEB3_ADDRESS - contains Ethereum address of the ERC20 smart contract
 # WEB3_ABI_FILE - contains name of file in which the contract's ABI is stored
@@ -83,7 +83,7 @@ assert tx_receipt != None
 balance1 = erc20.functions.balanceOf(user).call()
 print('balanceOf(user) is', balance1)
 diff = balance1 - balance0
-print('Balance of user changed:', diff)
+print('Balance of user changed by:', diff)
 assert diff == 1000
 
 print()
@@ -120,7 +120,7 @@ tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
 assert tx_receipt != None
 balance1 = erc20.functions.balanceOf(user).call()
 diff = balance1 - balance0
-print('Balance of user changed:', diff)
+print('Balance of user changed by:', diff)
 assert diff == 1000
 
 print('\nDone.')
