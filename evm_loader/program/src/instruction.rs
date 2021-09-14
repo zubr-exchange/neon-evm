@@ -61,18 +61,24 @@ pub enum EvmInstruction<'a> {
         nonce: u8,
     },
 
-    /// Call Ethereum-contract action
-    /// ### Account references
-    ///   0. \[WRITE\] Contract account for execution (Ether account)
-    ///   1. \[WRITE\] Contract code account (Code account)
-    ///   2. \[WRITE\] Caller (Ether account)
-    ///   3. \[SIGNER\] Signer for caller
-    ///   4. \[\] Clock sysvar
-    ///   ... other Ether accounts
-    Call {
-        /// Call data
-        bytes: &'a [u8],
-    },
+    // TODO: EvmInstruction::Call
+    // https://github.com/neonlabsorg/neon-evm/issues/188
+    // Does not fit in current vision.
+    // It is needed to update behavior for all system in whole.
+    // /// Call Ethereum-contract action
+    // /// ### Account references
+    // ///   0. \[WRITE\] Contract account for execution (Ether account)
+    // ///   1. \[WRITE\] Contract code account (Code account)
+    // ///   2. \[WRITE\] Caller (Ether account)
+    // ///   3. \[SIGNER\] Signer for caller
+    // ///   4. \[\] Clock sysvar
+    // ///   ... other Ether accounts
+    // Call {
+    //     /// Seed index for a collateral pool account
+    //     collateral_pool_index: u32,
+    //     /// Call data
+    //     bytes: &'a [u8],
+    // },
 
     ///
     /// Create ethereum account with seed
@@ -167,6 +173,34 @@ pub enum EvmInstruction<'a> {
     /// Partial call Ethereum-contract action from raw transaction data
     /// ### Account references same as in PartialCallFromRawEthereumTX
     Cancel,
+
+    /// Partial call Ethereum-contract action from raw transaction data
+    /// or Continue
+    /// ### Account references
+    ///   0. \[WRITE\] storage account
+    ///   1. ... Account references same as in Call
+    PartialCallOrContinueFromRawEthereumTX {
+        /// Seed index for a collateral pool account
+        collateral_pool_index: u32,
+        /// Steps of ethereum contract to execute
+        step_count: u64,
+        /// Ethereum transaction sender address
+        from_addr: &'a [u8],
+        /// Ethereum transaction sign
+        sign: &'a [u8],
+        /// Unsigned ethereum transaction
+        unsigned_msg: &'a [u8],
+    },
+
+    /// Partial call Ethereum-contract action from raw transaction data stored in holder account data
+    /// or
+    /// Continue
+    ExecuteTrxFromAccountDataIterativeOrContinue {
+        /// Seed index for a collateral pool account
+        collateral_pool_index: u32,
+        /// Steps of ethereum contract to execute
+        step_count: u64,
+    },
 }
 
 
@@ -211,9 +245,15 @@ impl<'a> EvmInstruction<'a> {
                 let (nonce, _rest) = rest.split_first().ok_or(InvalidInstructionData)?;
                 EvmInstruction::CreateAccount {lamports, space, ether, nonce: *nonce}
             },
-            3 => {
-                EvmInstruction::Call {bytes: rest}
-            },
+            // TODO: EvmInstruction::Call
+            // https://github.com/neonlabsorg/neon-evm/issues/188
+            // Does not fit in current vision.
+            // It is needed to update behavior for all system in whole.
+            // 3 => {
+            //     let (collateral_pool_index, rest) = rest.split_at(4);
+            //     let collateral_pool_index = collateral_pool_index.try_into().ok().map(u32::from_le_bytes).ok_or(InvalidInstructionData)?;
+            //     EvmInstruction::Call {collateral_pool_index, bytes: rest}
+            // },
             4 => {
                 let (_, rest) = rest.split_at(3);
                 let (base, rest) = rest.split_at(32);
@@ -291,6 +331,22 @@ impl<'a> EvmInstruction<'a> {
             },
             12 => {
                 EvmInstruction::Cancel
+            },
+            13 => {
+                let (collateral_pool_index, rest) = rest.split_at(4);
+                let collateral_pool_index = collateral_pool_index.try_into().ok().map(u32::from_le_bytes).ok_or(InvalidInstructionData)?;
+                let (step_count, rest) = rest.split_at(8);
+                let step_count = step_count.try_into().ok().map(u64::from_le_bytes).ok_or(InvalidInstructionData)?;
+                let (from_addr, rest) = rest.split_at(20);
+                let (sign, unsigned_msg) = rest.split_at(65);
+                EvmInstruction::PartialCallOrContinueFromRawEthereumTX {collateral_pool_index, step_count, from_addr, sign, unsigned_msg}
+            },
+            14 => {
+                let (collateral_pool_index, rest) = rest.split_at(4);
+                let collateral_pool_index = collateral_pool_index.try_into().ok().map(u32::from_le_bytes).ok_or(InvalidInstructionData)?;
+                let (step_count, _rest) = rest.split_at(8);
+                let step_count = step_count.try_into().ok().map(u64::from_le_bytes).ok_or(InvalidInstructionData)?;
+                EvmInstruction::ExecuteTrxFromAccountDataIterativeOrContinue {collateral_pool_index, step_count}
             },
             _ => return Err(InvalidInstructionData),
         })

@@ -64,7 +64,7 @@ pub fn check_secp256k1_instruction(sysvar_info: &AccountInfo, message_len: usize
                 return Err!(ProgramError::InvalidInstructionData; "wrong keccak instruction data, instruction={}, reference={}", &hex::encode(&instr.data), &hex::encode(&reference_instruction));
             }
         } else {
-            return Err!(ProgramError::IncorrectProgramId; "index={:?}, sysvar_info={:?}, instr.program_id={:?}", index, sysvar_info, instr.program_id);
+            return Err!(ProgramError::IncorrectProgramId; "Incorrect Program Id: index={:?}, sysvar_info={:?}, instr.program_id={:?}", index, sysvar_info, instr.program_id);
         }
     }
     else {
@@ -126,23 +126,4 @@ pub fn verify_tx_signature(signature: &[u8], unsigned_trx: &[u8]) -> Result<H160
     let address = H160::from_slice(&address[12..32]);
 
     Ok(address)
-}
-
-// pub fn find_sysvar_info<'a>(accounts: &'a [AccountInfo<'a>]) -> Result<&'a AccountInfo<'a>, ProgramError> {
-//     for account in accounts {
-//         if solana_program::sysvar::instructions::check_id(account.key) {
-//             return Ok(account);
-//         }
-//     }
-// Err!(ProgramError::InvalidInstructionData; "sysvar account not found in {:?}", accounts)
-// }
-
-pub fn find_rent_info<'a>(accounts: &'a [AccountInfo<'a>]) -> Result<&'a AccountInfo<'a>, ProgramError> {
-    for account in accounts {
-        if solana_program::sysvar::rent::check_id(account.key) {
-            return Ok(account);
-        }
-    }
-
-    Err!(ProgramError::InvalidInstructionData; "rent account not found in {:?}",  accounts)
 }
