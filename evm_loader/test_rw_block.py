@@ -152,7 +152,7 @@ class EventTest(unittest.TestCase):
         return send_transaction(client, trx, acc)
 
     def get_call_parameters(self, input, acc, caller, caller_ether):
-        tx = {'to': solana2ether(self.reId), 'value': 0, 'gas': 99999999, 'gasPrice': 1_000_000_000,
+        tx = {'to': self.reId_eth, 'value': 0, 'gas': 99999999, 'gasPrice': 1_000_000_000,
             'nonce': getTransactionCount(client, caller), 'data': input, 'chainId': 111}
         (from_addr, sign, msg) = make_instruction_data_from_tx(tx, acc.secret_key())
         assert (from_addr == caller_ether)
