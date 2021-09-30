@@ -14,6 +14,8 @@ use web3::Transport;
 
 use crate::{config, ethereum};
 
+const ERC20_ABI: &[u8] = include_bytes!("../erc20/ERC20.abi");
+
 /// Represents packet of information needed for single airdrop operation.
 #[derive(Debug, serde::Deserialize)]
 pub struct Airdrop {
@@ -98,11 +100,10 @@ async fn transfer<T: Transport>(
         "Transfer {} of token {} -> {}",
         amount, token_name, recipient
     );
-    let token =
-        Contract::from_json(eth, token, include_bytes!("../erc20/ERC20.abi")).map_err(|e| {
-            error!("Failed reading ERC20.abi: {}", e);
-            e
-        })?;
+    let token = Contract::from_json(eth, token, ERC20_ABI).map_err(|e| {
+        error!("Failed reading ERC20.abi: {}", e);
+        e
+    })?;
 
     info!(
         "Sending transaction for transfer of token {}...",
@@ -130,11 +131,10 @@ async fn get_decimals<T: Transport>(
     eth: Eth<T>,
     token_address: ethereum::Address,
 ) -> web3::contract::Result<u32> {
-    let token = Contract::from_json(eth, token_address, include_bytes!("../erc20/ERC20.abi"))
-        .map_err(|e| {
-            error!("Failed reading ERC20.abi: {}", e);
-            e
-        })?;
+    let token = Contract::from_json(eth, token_address, ERC20_ABI).map_err(|e| {
+        error!("Failed reading ERC20.abi: {}", e);
+        e
+    })?;
 
     let decimals = token
         .query("decimals", (), None, Options::default(), None)
