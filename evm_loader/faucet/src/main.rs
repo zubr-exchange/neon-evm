@@ -42,7 +42,7 @@ fn setup() -> Result<()> {
 /// Shows semantic version and revision hash.
 fn show_version() {
     let ver = env!("CARGO_PKG_VERSION");
-    let rev = git_version::git_version!();
+    let rev = git_version::git_version!(fallback = "unknown");
     info!("version {} (revision {})", ver, rev);
 }
 
