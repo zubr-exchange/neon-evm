@@ -42,15 +42,7 @@ fn setup() -> Result<()> {
 /// Shows semantic version and revision hash.
 fn show_version() {
     let ver = env!("CARGO_PKG_VERSION");
-    let rev = if let Ok(rev) = std::env::var("VERGEN_GIT_SHA") {
-        if rev.len() < 7 {
-            rev
-        } else {
-            rev[..7].to_string()
-        }
-    } else {
-        "<unknown>".to_owned()
-    };
+    let rev = git_version::git_version!();
     info!("version {} (revision {})", ver, rev);
 }
 
