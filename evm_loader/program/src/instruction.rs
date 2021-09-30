@@ -283,7 +283,10 @@ impl<'a> EvmInstruction<'a> {
                 let step_count = step_count.try_into().ok().map(u64::from_le_bytes).ok_or(InvalidInstructionData)?;
                 EvmInstruction::ExecuteTrxFromAccountDataIterativeOrContinue {collateral_pool_index, step_count}
             },
-            _ => return Err(InvalidInstructionData),
+            _ => {
+                debug_print!("EvmInstruction::unpack: unknown tag: {}", tag);
+                return Err(InvalidInstructionData)
+            },
         })
     }
 }
