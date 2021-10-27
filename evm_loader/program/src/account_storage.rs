@@ -264,10 +264,11 @@ impl<'a> ProgramAccountStorage<'a> {
     {
         for apply in values {
             match apply {
-                Apply::Modify {address, nonce, code_and_valids, storage, reset_storage} => {
+                Apply::Modify {address, basic, code_and_valids, storage, reset_storage} => {
                     if is_precompile_address(&address) {
                         continue;
                     }
+                    let nonce = basic.nonce;
                     if let Some(pos) = self.find_account(&address) {
                         let account = &mut self.accounts[pos];
                         let AccountMeta{ account: account_info, token: _, code: _ } = &self.account_metas[pos];

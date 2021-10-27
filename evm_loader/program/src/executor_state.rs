@@ -246,7 +246,7 @@ impl ExecutorSubstate {
 
                 Apply::Modify {
                     address,
-                    nonce: account.nonce,
+                    basic: backend.basic(&address),
                     code_and_valids: account.code.zip(account.valids),
                     storage,
                     reset_storage: account.reset,

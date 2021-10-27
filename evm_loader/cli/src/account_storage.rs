@@ -274,11 +274,12 @@ impl<'a> EmulatorAccountStorage<'a> {
 
         for apply in values {
             match apply {
-                Apply::Modify {address, nonce, code_and_valids, storage, reset_storage} => {
+                Apply::Modify {address, basic, code_and_valids, storage, reset_storage} => {
 
                     let code_begin;
                     let code_size;
                     let valids_size;
+                    let nonce = basic.nonce;
 
                     let mut storage_iter = storage.into_iter().peekable();
                     let exist_items: bool = matches!(storage_iter.peek(), Some(_));
