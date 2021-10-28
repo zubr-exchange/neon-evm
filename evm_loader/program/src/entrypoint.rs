@@ -330,32 +330,6 @@ fn process_instruction<'a>(
 
         //     Ok(())
         // },
-        EvmInstruction::ExecuteTrxFromAccountDataIterative{collateral_pool_index, step_count} => {
-            debug_print!("Execute iterative transaction from account data");
-            let holder_info = next_account_info(account_info_iter)?;
-            let storage_info = next_account_info(account_info_iter)?;
-
-            let operator_sol_info = next_account_info(account_info_iter)?;
-            let collateral_pool_sol_info = next_account_info(account_info_iter)?;
-            let system_info = next_account_info(account_info_iter)?;
-
-            authorized_operator_check(operator_sol_info)?;
-
-            let holder_data = holder_info.data.borrow();
-            let (unsigned_msg, signature) = get_transaction_from_data(&holder_data)?;
-
-            let trx_accounts = &accounts[5..];
-
-            let from_addr = verify_tx_signature(signature, unsigned_msg).map_err(|e| E!(ProgramError::MissingRequiredSignature; "Error={:?}", e))?;
-            let trx: UnsignedTransaction = rlp::decode(unsigned_msg).map_err(|e| E!(ProgramError::InvalidInstructionData; "DecoderError={:?}", e))?;
-
-            do_begin(collateral_pool_index, step_count, from_addr, trx,
-                program_id, trx_accounts, storage_info,
-                operator_sol_info, collateral_pool_sol_info,
-                system_info)?;
-
-            Ok(())
-        },
         EvmInstruction::CallFromRawEthereumTX {collateral_pool_index, from_addr, sign: _, unsigned_msg} => {
             debug_print!("Execute from raw ethereum transaction");
             // Get six accounts needed for payments (note slice accounts[6..] later)
@@ -426,56 +400,6 @@ fn process_instruction<'a>(
             Ok(())
         },
         EvmInstruction::OnEvent {address: _, topics: _, data: _} => {
-            Ok(())
-        },
-        EvmInstruction::PartialCallFromRawEthereumTX {collateral_pool_index, step_count, from_addr, sign: _, unsigned_msg} => {
-            debug_print!("Execute from raw ethereum transaction iterative");
-            let storage_info = next_account_info(account_info_iter)?;
-
-            let sysvar_info = next_account_info(account_info_iter)?;
-            let operator_sol_info = next_account_info(account_info_iter)?;
-            let collateral_pool_sol_info = next_account_info(account_info_iter)?;
-            let system_info = next_account_info(account_info_iter)?;
-
-            authorized_operator_check(operator_sol_info)?;
-
-            let trx_accounts = &accounts[5..];
-
-            check_secp256k1_instruction(sysvar_info, unsigned_msg.len(), 13_u16)?;
-
-            let caller = H160::from_slice(from_addr);
-            let trx: UnsignedTransaction = rlp::decode(unsigned_msg)
-                .map_err(|e| E!(ProgramError::InvalidInstructionData; "DecoderError={:?}", e))?;
-
-            do_begin(collateral_pool_index, step_count, caller, trx,
-                     program_id, trx_accounts, storage_info,
-                     operator_sol_info, collateral_pool_sol_info,
-                     system_info)?;
-
-            Ok(())
-        },
-        EvmInstruction::Continue { step_count } => {
-            debug_print!("Continue");
-            let storage_info = next_account_info(account_info_iter)?;
-
-            let operator_sol_info = next_account_info(account_info_iter)?;
-            let operator_eth_info = next_account_info(account_info_iter)?;
-            let user_eth_info = next_account_info(account_info_iter)?;
-
-            authorized_operator_check(operator_sol_info)?;
-
-            let trx_accounts = &accounts[5..];
-
-            let storage = StorageAccount::restore(storage_info, operator_sol_info).map_err(|err| {
-                if err == ProgramError::InvalidAccountData {EvmLoaderError::StorageAccountUninitialized.into()}
-                else {err}
-            })?;
-
-            do_continue_top_level(storage, step_count, program_id,
-                accounts, trx_accounts, storage_info,
-                operator_sol_info, operator_eth_info, user_eth_info,
-            )?;
-
             Ok(())
         },
         EvmInstruction::Cancel => {
@@ -732,7 +656,12 @@ fn process_instruction<'a>(
             Ok(())
         },
 
-        EvmInstruction::Finalise | EvmInstruction::CreateAccountWithSeed => Err!(ProgramError::InvalidInstructionData; "Deprecated instruction"),
+        EvmInstruction::Finalise |
+        EvmInstruction::CreateAccountWithSeed |
+        EvmInstruction::ExecuteTrxFromAccountDataIterative |
+        EvmInstruction::PartialCallFromRawEthereumTX |
+        EvmInstruction::Continue
+        => Err!(ProgramError::InvalidInstructionData; "Deprecated instruction"),
 
     };
 
