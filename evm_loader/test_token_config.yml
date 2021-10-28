@@ -1,7 +1,7 @@
 ---
-json_rpc_url: "SOLANA_URL"
+json_rpc_url: "http://ad-neon-validator-16.tt-int.net:8899/"
 websocket_url: ""
-keypair_path: /opt/test_token_owner
+keypair_path: test_token_owner
 address_labels:
   "11111111111111111111111111111111": System Program
 commitment: confirmed

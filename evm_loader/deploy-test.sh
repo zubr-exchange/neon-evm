@@ -5,7 +5,7 @@ echo "Deploy test..."
 [ -f $HOME/.config/solana/id.json ] || solana-keygen new --no-passphrase
 ACCOUNT=$(solana address)
 [ -f $HOME/.config/solana/id2.json ] || solana-keygen new --no-passphrase
-ACCOUNT2=$(solana address --keypair /root/.config/solana/id2.json)
+ACCOUNT2=$(solana address --keypair /home/plhk/.config/solana/id2.json)
 
 solana config set --url $SOLANA_URL
 for i in {1..10}; do
@@ -41,7 +41,10 @@ spl-token balance $ETH_TOKEN_MINT --owner $ACCOUNT2
 # Parse deployed contract address from output of solana-cli:
 # Example output: `Program Id: 853qJy1Z8hfgHe194fVrYUbVDfx88ny7phSCHc481Fc6`
 # EVM_LOADER will be empty if the match fails.
-export EVM_LOADER=$(solana program deploy --upgrade-authority evm_loader-keypair.json evm_loader.so | sed '/Program Id: \([0-9A-Za-z]\+\)/,${s//\1/;b};s/^.*$//;$q1')
+#export EVM_LOADER=$(solana program deploy --upgrade-authority evm_loader-keypair.json evm_loader.so | sed '/Program Id: \([0-9A-Za-z]\+\)/,${s//\1/;b};s/^.*$//;$q1')
+export EVM_LOADER="53DfF883gyixYNXnM7s5xhdeyV8mVk9T4i2hGV9vG9io"
+echo "waiting evm loader"
+sleep 60
 if [ ${#EVM_LOADER} -eq 0 ]; then
   echo  "EVM_LOADER is not deployed"
   exit 1
