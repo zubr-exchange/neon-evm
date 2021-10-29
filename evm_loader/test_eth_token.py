@@ -220,5 +220,36 @@ class EthTokenTest(unittest.TestCase):
         self.assertEqual(contract_balance_after, contract_balance_before - value)
         self.assertEqual(caller_balance_after, caller_balance_before + value - gas_used)
 
+    def test_transfer(self):
+        contract_token = get_associated_token_address(PublicKey(self.reId), ETH_TOKEN_MINT_ID)
+        print('contract_token:', contract_token)
+        contract_balance_before = self.token.balance(contract_token)
+        print('contract_balance_before:', contract_balance_before)
+        caller_balance_before = self.token.balance(self.caller_token)
+        print('caller_balance_before:', caller_balance_before)
+        value = caller_balance_before + 1
+        value = 10
+        print('value:', value)
+
+        func_name = abi.function_signature_to_4byte_selector('nop()')
+        result = self.call_partial_signed(func_name, value * (10**18))
+        print('result:', result)
+
+        self.assertEqual(result['meta']['err'], None)
+        self.assertEqual(len(result['meta']['innerInstructions']), 1)
+        # self.assertEqual(len(result['meta']['innerInstructions'][0]['instructions']), 4)
+        self.assertEqual(result['meta']['innerInstructions'][0]['index'], 0)
+        data = b58decode(result['meta']['innerInstructions'][0]['instructions'][-1]['data'])
+        self.assertEqual(data[:1], b'\x06')  # 6 means OnReturn
+        self.assertEqual(data[1], 0x11)  # 0x11 - stopped
+
+        gas_used = Decimal(int().from_bytes(data[2:10], 'little'))/Decimal(1_000_000_000)
+
+        contract_balance_after = self.token.balance(contract_token)
+        caller_balance_after = self.token.balance(self.caller_token)
+        self.assertEqual(contract_balance_after, contract_balance_before + value)
+        self.assertEqual(caller_balance_after, caller_balance_before - value - gas_used)
+
+
 if __name__ == '__main__':
     unittest.main()
