@@ -501,11 +501,13 @@ def operator1_keypair_path():
             return line[len(substr):].strip()
     raise Exception("cannot get keypair path")
 
+
 def operator2_keypair_path():
     return "/root/.config/solana/id2.json"
 
-def send_transaction(client, trx, acc):
-    result = client.send_transaction(trx, acc, opts=TxOpts(skip_confirmation=True, preflight_commitment="confirmed"))
+
+def send_transaction(client, trx, acc, skip_preflight=False):
+    result = client.send_transaction(trx, acc, opts=TxOpts(skip_confirmation=True, preflight_commitment="confirmed", skip_preflight=skip_preflight))
     confirm_transaction(client, result["result"])
     result = client.get_confirmed_transaction(result["result"])
     return result

@@ -8,6 +8,7 @@ from spl.token.instructions import get_associated_token_address
 from eth_tx_utils import make_keccak_instruction_data, make_instruction_data_from_tx
 from eth_utils import abi
 from decimal import Decimal
+import math
 
 solana_url = os.environ.get("SOLANA_URL", "http://localhost:8899")
 client = Client(solana_url)
@@ -54,6 +55,7 @@ class EthTokenTest(unittest.TestCase):
         collateral_pool_index = 2
         cls.collateral_pool_address = create_collateral_pool_address(collateral_pool_index)
         cls.collateral_pool_index_buf = collateral_pool_index.to_bytes(4, 'little')
+        cls.skip_preflight = False
 
     def sol_instr_19_partial_call(self, storage_account, step_count, evm_instruction):
         neon_evm_instr_19_partial_call = create_neon_evm_instr_19_partial_call(
@@ -95,13 +97,13 @@ class EthTokenTest(unittest.TestCase):
         trx = Transaction()
         trx.add(self.sol_instr_keccak(make_keccak_instruction_data(1, len(msg), 13)))
         trx.add(self.sol_instr_19_partial_call(storage, steps, instruction))
-        return send_transaction(client, trx, self.acc)
+        return send_transaction(client, trx, self.acc, self.skip_preflight)
 
     def call_continue(self, storage, steps):
         print("Continue")
         trx = Transaction()
         trx.add(self.sol_instr_20_continue(storage, steps))
-        return send_transaction(client, trx, self.acc)
+        return send_transaction(client, trx, self.acc, self.skip_preflight)
 
     def get_call_parameters(self, input, value):
         tx = {'to': self.reId_eth, 'value': value, 'gas': 99999999, 'gasPrice': 1_000_000_000,
@@ -127,18 +129,22 @@ class EthTokenTest(unittest.TestCase):
         instruction = from_addr + sign + msg
 
         storage = self.create_storage_account(sign[:8].hex())
-        result = self.call_begin(storage, 0, msg, instruction)
+        call_begin_result = self.call_begin(storage, 0, msg, instruction)
+        print('call_begin_result:', call_begin_result)
 
-        while (True):
+        if 'Err' in call_begin_result["result"]['meta']['status']:
+            return call_begin_result
+
+        while True:
             result = self.call_continue(storage, 400)["result"]
 
-            if (result['meta']['innerInstructions'] and result['meta']['innerInstructions'][0]['instructions']):
+            if result['meta']['innerInstructions'] and result['meta']['innerInstructions'][0]['instructions']:
                 data = b58decode(result['meta']['innerInstructions'][0]['instructions'][-1]['data'])
-                if (data[0] == 6):
+                if data[0] == 6:
                     return result
 
-
-    def test_caller_balance(self):
+    @unittest.skip("a.i.")
+    def test_01_caller_balance(self):
         expected_balance = self.token.balance(self.caller_token)
 
         func_name = abi.function_signature_to_4byte_selector('checkCallerBalance(uint256)')
@@ -153,7 +159,8 @@ class EthTokenTest(unittest.TestCase):
         self.assertEqual(data[:1], b'\x06') # 6 means OnReturn
         self.assertEqual(data[1], 0x11)  #  0x11 - stoped
 
-    def test_contract_balance(self):
+    @unittest.skip("a.i.")
+    def test_02_contract_balance(self):
         contract_token = get_associated_token_address(PublicKey(self.reId), ETH_TOKEN_MINT_ID)
         expected_balance = self.token.balance(contract_token)
 
@@ -169,7 +176,8 @@ class EthTokenTest(unittest.TestCase):
         self.assertEqual(data[:1], b'\x06') # 6 means OnReturn
         self.assertEqual(data[1], 0x11)  #  0x11 - stoped
 
-    def test_transfer_and_call(self):
+    @unittest.skip("a.i.")
+    def test_03_transfer_and_call(self):
         contract_token = get_associated_token_address(PublicKey(self.reId), ETH_TOKEN_MINT_ID)
 
         contract_balance_before = self.token.balance(contract_token)
@@ -194,7 +202,8 @@ class EthTokenTest(unittest.TestCase):
         self.assertEqual(contract_balance_after, contract_balance_before + value)
         self.assertEqual(caller_balance_after, caller_balance_before - value - gas_used)
 
-    def test_transfer_internal(self):
+    # @unittest.skip("a.i.")
+    def test_04_transfer_internal(self):
         contract_token = get_associated_token_address(PublicKey(self.reId), ETH_TOKEN_MINT_ID)
         self.token.transfer(ETH_TOKEN_MINT_ID, 500, contract_token)
 
@@ -220,35 +229,37 @@ class EthTokenTest(unittest.TestCase):
         self.assertEqual(contract_balance_after, contract_balance_before - value)
         self.assertEqual(caller_balance_after, caller_balance_before + value - gas_used)
 
-    def test_transfer(self):
+    # @unittest.skip("a.i.")
+    def test_05_transfer_with_out_of_funds(self):
         contract_token = get_associated_token_address(PublicKey(self.reId), ETH_TOKEN_MINT_ID)
         print('contract_token:', contract_token)
         contract_balance_before = self.token.balance(contract_token)
         print('contract_balance_before:', contract_balance_before)
         caller_balance_before = self.token.balance(self.caller_token)
         print('caller_balance_before:', caller_balance_before)
-        value = caller_balance_before + 1
-        value = 10
+        value = math.ceil(caller_balance_before + 1)
+        # value = 10
         print('value:', value)
 
         func_name = abi.function_signature_to_4byte_selector('nop()')
+        with self.assertRaisesRegex(Exception, "Error processing Instruction 1: insufficient funds for instruction"):
+            result = self.call_partial_signed(func_name, value * (10**18))
+
+        self.skip_preflight = True
+
         result = self.call_partial_signed(func_name, value * (10**18))
         print('result:', result)
 
-        self.assertEqual(result['meta']['err'], None)
-        self.assertEqual(len(result['meta']['innerInstructions']), 1)
-        # self.assertEqual(len(result['meta']['innerInstructions'][0]['instructions']), 4)
-        self.assertEqual(result['meta']['innerInstructions'][0]['index'], 0)
-        data = b58decode(result['meta']['innerInstructions'][0]['instructions'][-1]['data'])
-        self.assertEqual(data[:1], b'\x06')  # 6 means OnReturn
-        self.assertEqual(data[1], 0x11)  # 0x11 - stopped
+        self.assertTrue('Err' in result['result']['meta']['status'])
+        self.assertEqual(result['result']['meta']['status']['Err']['InstructionError'][0], 1)
+        self.assertEqual(result['result']['meta']['status']['Err']['InstructionError'][1], 'InsufficientFunds')
 
-        gas_used = Decimal(int().from_bytes(data[2:10], 'little'))/Decimal(1_000_000_000)
+        gas_used = 0
 
         contract_balance_after = self.token.balance(contract_token)
         caller_balance_after = self.token.balance(self.caller_token)
-        self.assertEqual(contract_balance_after, contract_balance_before + value)
-        self.assertEqual(caller_balance_after, caller_balance_before - value - gas_used)
+        self.assertEqual(contract_balance_after, contract_balance_before)
+        self.assertEqual(caller_balance_after, caller_balance_before - gas_used)
 
 
 if __name__ == '__main__':
