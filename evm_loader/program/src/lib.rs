@@ -21,7 +21,7 @@ pub mod account_storage;
 pub mod solidity_account;
 mod storage_account;
 pub mod instruction;
-mod transaction;
+pub mod transaction;
 /// Todo: document
 pub mod executor;
 /// Todo: document
