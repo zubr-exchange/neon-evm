@@ -125,7 +125,7 @@ cfg_if! {
         macros::pubkey_array!(
             AUTHORIZED_OPERATOR_LIST,
             [
-                "9kPRbbwKL5SYELF4cZqWWFmP88QkKys51DoaUBx8eK73",
+                "3qrx9u98AEAtgp6No9SWYs4D4jBwf5BNorSYuZMtFhvv",
                 "BMp6gEnveANdvSvspESJUrNczuHz1GF5UQKjVLCkAZih",
                 "CVAimMqtcmSUCV4RLZSJAreDpEd7JEZmrvCVj85yaRzZ",
             ]

@@ -502,7 +502,8 @@ def operator1_keypair_path():
     raise Exception("cannot get keypair path")
 
 def operator2_keypair_path():
-    return "/home/plhk/.config/solana/id2.json"
+    home = os.path.expanduser('~')
+    return home + "/.config/solana/id2.json"
 
 def send_transaction(client, trx, acc):
     result = client.send_transaction(trx, acc, opts=TxOpts(skip_confirmation=True, preflight_commitment="confirmed"))

@@ -1417,6 +1417,7 @@ dependencies = [
 name = "evm-runtime"
 version = "0.18.0"
 dependencies = [
+ "environmental",
  "evm-core",
  "serde",
  "serde_bytes",
