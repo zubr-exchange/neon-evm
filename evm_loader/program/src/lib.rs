@@ -1,5 +1,5 @@
 #![deny(warnings)]
-//#![deny(missing_docs)]
+#![deny(missing_docs)]
 #![deny(clippy::all, clippy::pedantic, clippy::nursery)]
 #![allow(clippy::module_name_repetitions)]
 
@@ -28,12 +28,15 @@ pub mod solidity_account;
 mod storage_account;
 pub mod system;
 pub mod token;
-pub mod transaction;
+mod transaction;
 pub mod utils;
 
 // Export current solana-sdk types for downstream users who may also be building with a different
 // solana-sdk version
 pub use solana_program;
+
+#[cfg(feature = "tracing")]
+pub use transaction::UnsignedTransaction;
 
 //solana_sdk::declare_id!("EVM1111111111111111111111111111111111111111");
 #[cfg(feature = "tracing")]
